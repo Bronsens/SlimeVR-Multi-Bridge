@@ -374,19 +374,23 @@ async def single_main_loop(tracker: SingleTracker):
         await asyncio.sleep(1)
 
 def start_single_tracker(tracker: SingleTracker):
-    """
-    Initialize a background thread routine task to handle connecting a single tracking unit.
-    """
-    import threading
-    def background_single():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        idx = tracker.sensor_id
-        mac = tracker.mac_var.get()
-        loop.run_until_complete(connect_tracker_task(idx, mac, trackers))
+	"""
+	Initialize a background thread routine task to handle connecting a single tracking unit.
+	"""
+	import threading
+	global bridge_running
+	bridge_running = True
+	tracker.is_running = True
 
-    threading.Thread(target=background_single, daemon=True).start()
+	def background_single():
+		loop = asyncio.new_event_loop()
+		asyncio.set_event_loop(loop)
+
+		idx = tracker.sensor_id
+		mac = tracker.mac_var.get()
+		loop.run_until_complete(connect_tracker_task(idx, mac, trackers))
+
+	threading.Thread(target=background_single, daemon=True).start()
 
 # =======================================================
 # (B) Event loop block tracking automated batch updates array sequences
@@ -574,6 +578,10 @@ def on_stop_all():
     global bridge_running
     print("Stopping all tracking bridge connection tasks...")
     bridge_running = False  # Tripping this flag breaks active loops instantly
+    
+def on_stop_single(t_idx):
+	print(f"Stopping connection routine task for Tracker #{t_idx + 1}...")
+	trackers[t_idx].is_running = False
 
 ttk.Button(button_frame, text="Start Bridge (All)", command=on_start_all).grid(row=0, column=2, padx=10)
 ttk.Button(button_frame, text="Stop Bridge", command=on_stop_all).grid(row=1, column=2, padx=10, pady=5)
